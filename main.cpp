@@ -1,30 +1,47 @@
 #include <bangtal.h>
 #include <stdio.h>
-#include <Windows.h>
-#include <process.h>
+#include <math.h>
 
 
 SceneID scene;
+TimerID timer;
 ObjectID button1, button2, button3;
 ObjectID ground, column1, column2, column3;
 ObjectID disks[10];
 
-unsigned char arr[3][10];
-unsigned char indices[3];
-unsigned char N = 7;
+int arr[3][10];
+int indices[3];
+int N = 7;
+
+int action[1024][2];
+
+int t = 0;
 
 
 
-void move (int from, int to) {
-    Sleep(100);
+void timerCallback(TimerID timer) {
+    int from = action[t][0];
+    int to = action[t][1];
+
     locateObject(disks[arr[from][indices[from] - 1] - 1], scene, 130 + 400 * to, 240 + indices[to] * 20);
     arr[to][indices[to]] = arr[from][indices[from] - 1];
     arr[from][indices[from] - 1] = 0;
     indices[from]--;
     indices[to]++;
+    t++;
+    if (t < pow(2, N) - 1) {
+        setTimer(timer, 0.1f);
+        startTimer(timer);
+    }
 }
 
-void hanoi (int n, int from, int by, int to) {
+void move(int from, int to) {
+    action[t][0] = from;
+    action[t][1] = to;
+    t++;
+}
+
+void hanoi(int n, int from, int by, int to) {
     if (n == 1) {
         move(from, to);
     }
@@ -35,7 +52,7 @@ void hanoi (int n, int from, int by, int to) {
     }
 }
 
-unsigned _stdcall start(void* arg) {
+void start() {
     indices[0] = N;
     indices[1] = 0;
     indices[2] = 0;
@@ -51,8 +68,11 @@ unsigned _stdcall start(void* arg) {
     hideObject(button2);
     hideObject(button3);
 
+    t = 0;
     hanoi(N, 0, 1, 2);
-    _endthread();
+    t = 0;
+    setTimer(timer, 0.1f);
+    startTimer(timer);
 }
 
 void increase() {
@@ -74,16 +94,17 @@ void decrease() {
 }
 
 void mouseCallBack(ObjectID id, int x, int y, MouseAction action) {
-    if (id == button1) _beginthreadex(NULL, 0, start, 0, 0, NULL);
+    if (id == button1) start();
     else if (id == button2) increase();
     else if (id == button3) decrease();
 }
 
 int main() {
+    setTimerCallback(timerCallback);
     setMouseCallback(mouseCallBack);
 
     scene = createScene("hanoi", "Images/background.png");
-
+    timer = createTimer();
 
     ground = createObject("Images/ground.png");
     locateObject(ground, scene, 0, 0);
@@ -123,5 +144,5 @@ int main() {
         i < N ? showObject(disks[i]) : hideObject(disks[i]);
     }
     startGame(scene);
-	return 0;
+    return 0;
 }
